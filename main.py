@@ -62,6 +62,8 @@ while True:
 
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # converting image from color to grayscale
 
+    img = cv2.GaussianBlur(img, (21, 21), 0)
+
     se = cv2.getStructuringElement(cv2.MORPH_RECT, (8, 8))
     bg = cv2.morphologyEx(img, cv2.MORPH_DILATE, se)
     img = cv2.divide(img, bg, scale=255)
@@ -69,7 +71,7 @@ while True:
 
     diff = img - img_prev
 
-    _, img_diff = cv2.threshold(diff, 12, 20, cv2.THRESH_BINARY)
+    _, img_diff = cv2.threshold(diff, 12, 12, cv2.THRESH_BINARY)
     count_white = np.count_nonzero(img_diff)
 
     if count_white > 150000:
