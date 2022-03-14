@@ -1,32 +1,10 @@
 import cv2
 import numpy as np
 
-
-# def low_pass_filtering(image, size):  # Transfer parameters are Fourier transform spectrogram and filter size
-#     h, w = image.shape[0:2]  # Getting image properties
-#     h1, w1 = int(h / 2), int(w / 2)  # Find the center point of the Fourier spectrum
-#     image2 = np.zeros((h, w), np.uint8)  # Define a blank black image with the same size as the Fourier Transform Transfer
-#     image2[h1 - int(size / 2):h1 + int(size / 2), w1 - int(size / 2):w1 + int(
-#         size / 2)] = 1  # Center point plus or minus half of the filter size, forming a filter size that defines the size, then set to 1, preserving the low frequency part
-#     image3 = image2 * image  # A low-pass filter is obtained by multiplying the defined low-pass filter with the incoming Fourier spectrogram one-to-one.
-#     return image3
-#
-#
-# def fft_filter(image, filter_const: int):
-#     fft_image = np.fft.fft2(image)
-#     shifted_fft_image = np.fft.fftshift(fft_image)
-#
-#     # Low-pass filter
-#     shifted_fft_image = low_pass_filtering(shifted_fft_image, filter_const)
-#     res = np.log(np.abs(shifted_fft_image))
-#
-#     # Inverse Fourier Transform
-#     idft_shift = np.fft.ifftshift(shifted_fft_image)  # Move the frequency domain from the middle to the upper left corner
-#     ifimg = np.fft.ifft2(idft_shift)  # Fourier library function call
-#     ifimg = np.abs(ifimg)
-#     return np.int8(ifimg)
+# https://debuggercafe.com/moving-object-detection-using-frame-differencing-with-opencv/
 
 
+# low pass filter (programmed by Ladislav in 2021 - Furrier transform used)
 def fft_filter(input_data, filter_const: int):
     furrier_transform = np.fft.fft2(input_data)
     shifted_furrier_transform = np.fft.fftshift(furrier_transform)
@@ -45,46 +23,83 @@ def fft_filter(input_data, filter_const: int):
     return np.int8(output)
 
 
-app_name = "PVSO-Semestralka"
-window_1_name = "1"
+def get_background(camera):
+    _, cap = camera.read()
+    # we will randomly select 50 frames for the calculating the median
+    frames = []
+    for i in range(0, 50):
+        _, cap = camera.read()
+        frames.append(cap)
 
-imcap = cv2.VideoCapture(0)
-imcap.set(3, 640)  # set width as 640
-imcap.set(4, 480)  # set height as 480
+    # calculate the median
+    median_frame = np.median(frames, axis=0).astype(np.uint8)
+    return median_frame
 
-# capture fist frame from video
-_, img = imcap.read()
-img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-img_prev = img
 
-while True:
-    success, img = imcap.read()  # capture frame from video
+def main():
+    # naming of windows
+    app_name = "PVSO-Semestralka"
+    window_1_name = "1"
 
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # converting image from color to grayscale
+    # setting up camera and capturing object
+    imcap = cv2.VideoCapture(0)
+    imcap.set(3, 640)  # set width as 640
+    imcap.set(4, 480)  # set height as 480
 
-    img = cv2.GaussianBlur(img, (21, 21), 0)
+    # capture background as median of 50 frames
+    med_frame = get_background(imcap)
+    med_frame = cv2.cvtColor(med_frame, cv2.COLOR_BGR2GRAY)
+    cv2.imshow(window_1_name, med_frame)
 
-    se = cv2.getStructuringElement(cv2.MORPH_RECT, (8, 8))
-    bg = cv2.morphologyEx(img, cv2.MORPH_DILATE, se)
-    img = cv2.divide(img, bg, scale=255)
-    img = cv2.threshold(img, 0, 255, cv2.THRESH_OTSU)[1]
-
-    diff = img - img_prev
-
-    _, img_diff = cv2.threshold(diff, 12, 12, cv2.THRESH_BINARY)
-    count_white = np.count_nonzero(img_diff)
-
-    if count_white > 150000:
-        print("MOVE")
-
-    cv2.imshow(app_name, img_diff)  # loop will be broken when 'q' is pressed on the keyboard
-    cv2.imshow(window_1_name, img)
-
-    if cv2.waitKey(10) & 0xFF == ord('q'):
-        break
-
+    # capture fist frame from video
+    _, img = imcap.read()
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img_prev = img
 
-imcap.release()
-cv2.destroyWindow(app_name)
-cv2.destroyWindow(window_1_name)
+    # application loop
+    while True:
+
+        # capture frame from video
+        success, img = imcap.read()
+
+        # converting image from color to grayscale
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        # TODO: do not know what is doing
+        img = cv2.GaussianBlur(img, (21, 21), 0)
+
+        # TODO: do not know what is doing
+        se = cv2.getStructuringElement(cv2.MORPH_RECT, (8, 8))
+        bg = cv2.morphologyEx(img, cv2.MORPH_DILATE, se)
+        img = cv2.divide(img, bg, scale=255)
+        img = cv2.threshold(img, 0, 255, cv2.THRESH_OTSU)[1]
+
+        # differencing frames
+        diff = img - img_prev
+
+        # thresholding frames
+        _, img_diff = cv2.threshold(diff, 12, 12, cv2.THRESH_BINARY)
+        count_white = np.count_nonzero(img_diff)
+
+        # counting white pixels - white == moving
+        if count_white > 150000:
+            print("MOVE")
+
+        # display frame(s) (image(s))
+        cv2.imshow(app_name, img_diff)
+
+        # loop will be broken when 'q' is pressed on the keyboard
+        if cv2.waitKey(10) & 0xFF == ord('q'):
+            break
+
+        # save state of current captured frame to state variable for next loop (frame differencing)
+        img_prev = img
+
+    # if loop was terminated, close and erase window
+    imcap.release()
+    cv2.destroyWindow(app_name)
+    cv2.destroyWindow(window_1_name)
+
+
+# call main function
+main()
