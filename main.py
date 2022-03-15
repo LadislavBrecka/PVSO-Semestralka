@@ -50,14 +50,15 @@ def main():
     imcap.set(3, 640)  # set width as 640
     imcap.set(4, 480)  # set height as 480
 
-    # capture background as median of 50 frames
-    background_img = get_background(imcap)
-    background_img = cv2.cvtColor(background_img, cv2.COLOR_BGR2GRAY)
-    cv2.imshow(window_1_name, background_img)
+    # Create the background subtractor object
+    # Use the last 700 video frames to build the background
+    back_sub = cv2.createBackgroundSubtractorMOG2(history=700,
+                                                  varThreshold=25, detectShadows=True)
 
-    frame_count = 0
-    consecutive_frame = 4
-    frame_diff_list = []
+    # Create kernel for morphological operation
+    # You can tweak the dimensions of the kernel
+    # e.g. instead of 20,20 you can try 30,30.
+    kernel = np.ones((20, 20), np.uint8)
 
     # capture fist frame from video
     _, img = imcap.read()
@@ -68,80 +69,71 @@ def main():
     while True:
 
         # capture frame from video
-        success, img = imcap.read()
-        orig_img = img.copy()
+        _, img = imcap.read()
 
         # converting image from color to grayscale
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        img = cv2.fastNlMeansDenoising(img, None, 20, 7, 21)
+        # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        # img = cv2.fastNlMeansDenoising(img, None, 20, 7, 21)
 
-        frame_count += 1
-        if frame_count % consecutive_frame == 0 or frame_count == 1:
-            frame_diff_list = []
+        # Use every frame to calculate the foreground mask and update
+        # the background
+        fg_mask = back_sub.apply(img)
 
-        # find the difference between current frame and base frame
-        frame_diff = cv2.absdiff(img, background_img)
-        # thresholding to convert the frame to binary
-        ret, thres = cv2.threshold(frame_diff, 50, 255, cv2.THRESH_BINARY)
-        # dilate the frame a bit to get some more white area...
-        # ... makes the detection of contours a bit easier
-        dilate_frame = cv2.dilate(thres, None, iterations=2)
-        # append the final result into the `frame_diff_list`
-        frame_diff_list.append(dilate_frame)
+        # Close dark gaps in foreground object using closing
+        fg_mask = cv2.morphologyEx(fg_mask, cv2.MORPH_CLOSE, kernel)
 
-        # if we have reached `consecutive_frame` number of frames
-        if len(frame_diff_list) == consecutive_frame:
-            # add all the frames in the `frame_diff_list`
-            sum_frames = sum(frame_diff_list)
+        # Remove salt and pepper noise with a median filter
+        fg_mask = cv2.medianBlur(fg_mask, 5)
 
-            # find the contours around the white segmented areas
-            contours, hierarchy = cv2.findContours(sum_frames, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            # draw the contours, not strictly necessary
-            for i, cnt in enumerate(contours):
-                cv2.drawContours(img, contours, i, (0, 0, 255), 3)
+        # Threshold the image to make it either black or white
+        _, fg_mask = cv2.threshold(fg_mask, 127, 255, cv2.THRESH_BINARY)
 
-            for contour in contours:
-                # continue through the loop if contour area is less than 500...
-                # ... helps in removing noise detection
-                if cv2.contourArea(contour) < 500:
-                    continue
-                # get the xmin, ymin, width, and height coordinates from the contours
-                (x, y, w, h) = cv2.boundingRect(contour)
-                # draw the bounding boxes
-                cv2.rectangle(orig_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        # Find the index of the largest contour and draw bounding box
+        fg_mask_bb = fg_mask
+        contours, hierarchy = cv2.findContours(fg_mask_bb, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+        areas = [cv2.contourArea(c) for c in contours]
 
-            cv2.imshow(app_name, orig_img)
+        # If there are no countours
+        if len(areas) < 1:
 
+            # Display the resulting frame
+            cv2.imshow(app_name, img)
 
-        # # TODO: do not know what is doing
-        # img = cv2.GaussianBlur(img, (21, 21), 0)
-        #
-        # # TODO: do not know what is doing
-        # se = cv2.getStructuringElement(cv2.MORPH_RECT, (8, 8))
-        # bg = cv2.morphologyEx(img, cv2.MORPH_DILATE, se)
-        # img = cv2.divide(img, bg, scale=255)
-        # img = cv2.threshold(img, 0, 255, cv2.THRESH_OTSU)[1]
-        #
-        # # differencing frames
-        # diff = img - img_prev
-        #
-        # # thresholding frames
-        # _, img_diff = cv2.threshold(diff, 12, 12, cv2.THRESH_BINARY)
-        # count_white = np.count_nonzero(img_diff)
-        #
-        # # counting white pixels - white == moving
-        # if count_white > 150000:
-        #     print("MOVE")
-        #
-        # # display frame(s) (image(s))
-        # cv2.imshow(app_name, img_diff)
-        #
-        # loop will be broken when 'q' is pressed on the keyboard
-        if cv2.waitKey(10) & 0xFF == ord('q'):
+            # If "q" is pressed on the keyboard,
+            # exit this loop
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+            # Go to the top of the while loop
+            continue
+
+        else:
+            # Find the largest moving object in the image
+            max_index = np.argmax(areas)
+
+        # Draw the bounding box
+        cnt = contours[max_index]
+        x, y, w, h = cv2.boundingRect(cnt)
+        cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 3)
+
+        # Draw circle in the center of the bounding box
+        x2 = x + int(w / 2)
+        y2 = y + int(h / 2)
+        cv2.circle(img, (x2, y2), 4, (0, 255, 0), -1)
+
+        # Print the centroid coordinates (we'll use the center of the
+        # bounding box) on the image
+        text = "x: " + str(x2) + ", y: " + str(y2)
+        cv2.putText(img, text, (x2 - 10, y2 - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+        # Display the resulting frame
+        cv2.imshow(app_name, img)
+
+        # If "q" is pressed on the keyboard,
+        # exit this loop
+        if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-        #
-        # # save state of current captured frame to state variable for next loop (frame differencing)
-        # img_prev = img
 
     # if loop was terminated, close and erase window
     imcap.release()
