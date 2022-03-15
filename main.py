@@ -25,12 +25,16 @@ def fft_filter(input_data, filter_const: int):
 
 def get_background(camera):
     _, cap = camera.read()
-    # we will randomly select 50 frames for the calculating the median
-    frames = []
-    for i in range(0, 50):
+    # we will select random 50 frames from 500 for the calculating the median
+    all_frames = []
+    for i in range(0, 500):
         _, cap = camera.read()
-        frames.append(cap)
+        all_frames.append(cap)
 
+    frames = []
+    rand_ind = np.random.randint(0, 500, 50)
+    for i in range(0, 50):
+        frames.append(all_frames[rand_ind[i]])
     # calculate the median
     median_frame = np.median(frames, axis=0).astype(np.uint8)
     return median_frame
@@ -47,9 +51,12 @@ def main():
     imcap.set(4, 480)  # set height as 480
 
     # capture background as median of 50 frames
-    med_frame = get_background(imcap)
-    med_frame = cv2.cvtColor(med_frame, cv2.COLOR_BGR2GRAY)
-    cv2.imshow(window_1_name, med_frame)
+    background_img = get_background(imcap)
+    background_img = cv2.cvtColor(background_img, cv2.COLOR_BGR2GRAY)
+    cv2.imshow(window_1_name, background_img)
+
+    frame_count = 0
+    consecutive_frame = 4
 
     # capture fist frame from video
     _, img = imcap.read()
@@ -58,6 +65,10 @@ def main():
 
     # application loop
     while True:
+        frame_count += 1
+
+        if frame_count % consecutive_frame == 0 or frame_count == 1:
+            frame_diff_list = []
 
         # capture frame from video
         success, img = imcap.read()
