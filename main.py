@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 
 # https://debuggercafe.com/moving-object-detection-using-frame-differencing-with-opencv/
+# https://pysource.com/2021/01/28/object-tracking-with-opencv-and-python/
 
 
 # low pass filter (programmed by Ladislav in 2021 - Furrier transform used)
