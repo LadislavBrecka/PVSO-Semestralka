@@ -25,7 +25,8 @@ def main():
         _, img = imcap.read()
 
         # Convert to the HSV color space
-        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        blur = cv2.medianBlur(img, 5)
+        hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
 
         # Create a mask based on medium to high Saturation and Value
         # Hue 100-130 is close to blue, which we are detecting
