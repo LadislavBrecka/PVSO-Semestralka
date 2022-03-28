@@ -53,7 +53,7 @@ def color_coord(img, color):
     return coordinates
 
 
-def color_detect(img, color, circle):
+def color_detect(img, color, shape):
     # Convert to the HSV color space
     blur = cv2.medianBlur(img, 5)
     hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
@@ -82,10 +82,12 @@ def color_detect(img, color, circle):
         (x, y, w, h) = cv2.boundingRect(contour)
 
         # Compute size
-        size = (h + w) // 2 //2
+        size = (h + w) // 2 // 2
 
-        if circle is not None:
-            cv2.circle(img, (x+size, y+size), size, (0, 255, 0), 3)
+        if shape == 'CIRCLE':
+            circle = circle_detect(img)
+            if circle is not None:
+                cv2.circle(img, (x+size, y+size), size, (0, 255, 0), 3)
 
         # # Check if marker will be inside frame
         # if y + size < height and x + size < width:
@@ -149,7 +151,7 @@ def circle_detect(img):
     sigma = 0.3
     upper = int(min(255, (1.0 + sigma) * v))
     # threshold = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
-    circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, 1, minDist=5, param1=upper, param2=20, minRadius=0)
+    circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, 1, minDist=100, param1=upper, param2=20, minRadius=0)
     chosen = None
     if circles is not None:
         circles = np.uint16(np.around(circles))
@@ -164,20 +166,11 @@ def circle_detect(img):
                     min_rad = circle[2]
                     chosen = circle
 
-    return img, chosen
-
-
-# # for coord in color_coordinates:
-#     distance = dist(circle, coord)
-#     print(distance)
-#     if distance <= circle[2]*1.2:
-#         cv2.circle(img, (circle[0], circle[1]), 1, (0, 100, 100), 3)
-#         cv2.circle(img, (circle[0], circle[1]), circle[2], (255, 0, 255), 3)
+    return chosen
 
 
 def main():
     # setting up camera and capturing object
-
     imcap = cv2.VideoCapture(0)
     imcap.set(3, width)  # set width as 640
     imcap.set(4, height)  # set height as 480
@@ -193,9 +186,7 @@ def main():
 
         # color_img = color_detect(img, RED)
         img_color = img.copy()
-        img_circle = img.copy()
-        circle_img, chosen = circle_detect(img_circle)
-        color_img = color_detect(img_color, GREEN, chosen)
+        color_img = color_detect(img_color, GREEN, 'CIRCLE')
 
         # Add a FPS label to image
         text = f"FPS: {int(1 / (time.time() - last_time))}"
@@ -203,8 +194,7 @@ def main():
         cv2.putText(img, text, (10, 20), cv2.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 2)
 
         # Show the frame
-        cv2.imshow("circle", circle_img)
-        cv2.imshow("color", color_img)
+        cv2.imshow("circle", color_img)
 
         # If q is pressed terminate
         if cv2.waitKey(1) == ord('q'):
