@@ -1,11 +1,12 @@
 import cv2
 import time
+
 import imutils
 import numpy as np
 
 RED = (150, 180)
 GREEN = (50, 80)
-
+YELLOW = (20, 40)
 SIGMA = 0.33
 
 width = 640
@@ -52,7 +53,7 @@ def color_coord(img, color):
     return coordinates
 
 
-def color_detect(img, color):
+def color_detect(img, color, circle):
     # Convert to the HSV color space
     blur = cv2.medianBlur(img, 5)
     hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
@@ -81,23 +82,26 @@ def color_detect(img, color):
         (x, y, w, h) = cv2.boundingRect(contour)
 
         # Compute size
-        size = (h + w) // 2
+        size = (h + w) // 2 //2
 
-        # Check if marker will be inside frame
-        if y + size < height and x + size < width:
-            # Resize marker
-            res_marker = cv2.resize(marker, (size, size))
+        if circle is not None:
+            cv2.circle(img, (x+size, y+size), size, (0, 255, 0), 3)
 
-            # Create a mask of marker
-            img2gray = cv2.cvtColor(res_marker, cv2.COLOR_BGR2GRAY)
-            _, marker_mask = cv2.threshold(img2gray, 1, 255, cv2.THRESH_BINARY)
-
-            # Region of Image (ROI), where we want to insert marker
-            roi = img[y:y + size, x:x + size]
-
-            # Mask out marker region and insert
-            roi[np.where(marker_mask)] = 0
-            roi += res_marker
+        # # Check if marker will be inside frame
+        # if y + size < height and x + size < width:
+        #     # Resize marker
+        #     res_marker = cv2.resize(marker, (size, size))
+        #
+        #     # Create a mask of marker
+        #     img2gray = cv2.cvtColor(res_marker, cv2.COLOR_BGR2GRAY)
+        #     _, marker_mask = cv2.threshold(img2gray, 1, 255, cv2.THRESH_BINARY)
+        #
+        #     # Region of Image (ROI), where we want to insert marker
+        #     roi = img[y:y + size, x:x + size]
+        #
+        #     # Mask out marker region and insert
+        #     roi[np.where(marker_mask)] = 0
+        #     roi += res_marker
 
     return img
 
@@ -138,43 +142,15 @@ def circle_detect(img):
 
     color_coordinates = color_coord(img, GREEN)
 
-    # gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    #
-    # blurred = cv2.blur(gray, (5, 5))
-    # v = np.median(blurred)
-    # sigma = 0.3
-    # upper = int(min(255, (1.0 + sigma) * v))
-    # # threshold = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
-    # circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, 1, minDist=10, param1=upper, param2=25, minRadius=0)
-    config = {
-        "img_default_width": 600,
-        "img_default_height": 400,
-        "minDist": 22,
-        "minRadius": 0,
-        "maxRadius": 100,
-        "gaussian_default": 5,
-        "median_default": 7,
-        "threshold": 0
-    }
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    gray_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    gray_image = cv2.GaussianBlur(gray_image, (config["gaussian_default"], config["gaussian_default"]), 0)
-    gray_image = cv2.medianBlur(gray_image, config["median_default"])
-    # gray_image= cv2.GaussianBlur(gray_image, (7, 7), 0)
-    ret, th1 = cv2.threshold(gray_image, 127, 255, cv2.THRESH_BINARY)
-    th2 = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 3, 5)
-    th3 = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 3, 5)
-
-    # https://www.pyimagesearch.com/2021/04/28/opencv-morphological-operations/#:~:text=Morphological%20operations%20are%20simple%20transformations,and%20structures%20inside%20of%20images.
-    kernel = np.ones((5, 5), np.uint8)
-    erosion = cv2.erode(th2, kernel, iterations=1)
-    dilation = cv2.dilate(erosion, kernel, iterations=1)
-
-    imgray = cv2.Canny(erosion, 30, 100)
-
-    circles = cv2.HoughCircles(imgray, method=cv2.HOUGH_GRADIENT, dp=1, minDist=config["minDist"], param1=50, param2=30,
-                               minRadius=config["minRadius"], maxRadius=config["maxRadius"])
-
+    blurred = cv2.blur(gray, (5, 5))
+    v = np.median(blurred)
+    sigma = 0.3
+    upper = int(min(255, (1.0 + sigma) * v))
+    # threshold = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+    circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, 1, minDist=5, param1=upper, param2=20, minRadius=0)
+    chosen = None
     if circles is not None:
         circles = np.uint16(np.around(circles))
         min_distance = 1000
@@ -183,19 +159,12 @@ def circle_detect(img):
         for circle in circles[0, :]:
             for coord in color_coordinates:
                 distance = dist(circle, coord)
-                print(distance)
-                if distance < circle[2]*0.8 < min_rad and min_distance > distance:
+                if distance < circle[2] < min_rad and min_distance > distance:
                     min_distance = distance
                     min_rad = circle[2]
                     chosen = circle
-            # cv2.circle(img, (circle[0], circle[1]), 1, (0, 100, 100), 3)
-            # cv2.circle(img, (circle[0], circle[1]), circle[2], (255, 0, 255), 3)
 
-        if chosen is not None:
-            cv2.circle(img, (chosen[0], chosen[1]), 1, (0, 100, 100), 3)
-            cv2.circle(img, (chosen[0], chosen[1]), chosen[2], (255, 0, 255), 3)
-
-    return img
+    return img, chosen
 
 
 # # for coord in color_coordinates:
@@ -225,8 +194,8 @@ def main():
         # color_img = color_detect(img, RED)
         img_color = img.copy()
         img_circle = img.copy()
-        circle_img = circle_detect(img_circle)
-        color_img = color_detect(img_color, GREEN)
+        circle_img, chosen = circle_detect(img_circle)
+        color_img = color_detect(img_color, GREEN, chosen)
 
         # Add a FPS label to image
         text = f"FPS: {int(1 / (time.time() - last_time))}"
