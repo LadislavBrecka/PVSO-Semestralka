@@ -1,11 +1,51 @@
 import cv2
 import time
+import sys
 
-from config import *
+from color import Colors
 from detector import detect
+from shape import Shapes
+
+# image setting
+width = 640
+height = 480
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 
 def main():
+    COLOR: Colors
+    SHAPE: Shapes
+    if len(sys.argv) < 3:
+        COLOR = Colors.GREEN
+        SHAPE = Shapes.CIRCLE
+    else:
+        color_switch = {
+            'RED': Colors.RED,
+            'GREEN': Colors.GREEN,
+            "YELLOW": Colors.YELLOW
+        }
+        shape_switch = {
+            'CIRCLE': Shapes.CIRCLE,
+            'RECTANGLE': Shapes.RECTANGLE
+        }
+
+        COLOR = color_switch.get(sys.argv[1], Colors.INVALID)
+        SHAPE = shape_switch.get(sys.argv[2], Shapes.INVALID)
+        if COLOR.value is None or SHAPE.value is None:
+            sys.exit("Wrong shape or color entered")
+
+        print(bcolors.OKGREEN + "Selected shape is {} with color {}".format(SHAPE.name, COLOR.name) + bcolors.ENDC)
+
     # setting up camera and capturing object
     imcap = cv2.VideoCapture(0)
     imcap.set(3, width)  # set width as 640
@@ -20,7 +60,7 @@ def main():
         # Capture the frame
         _, img = imcap.read()
 
-        color_img = detect(img, GREEN, 'CIRCLE')
+        color_img = detect(img, COLOR, SHAPE)
         # color_img = detect(img, RED, 'RECT')
 
         # Add a FPS label to image
@@ -41,3 +81,7 @@ def main():
 
 
 main()
+
+
+
+

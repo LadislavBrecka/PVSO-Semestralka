@@ -1,10 +1,11 @@
 import cv2
 import numpy as np
-from config import *
 from distance import dist
 
 
 def rect_detect(img, x, y):
+    SIGMA = 0.33
+
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     blur = cv2.medianBlur(gray, 9)
     sharpen_kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])

@@ -1,5 +1,6 @@
 import cv2
-from config import *
+import numpy as np
+
 from distance import dist
 
 

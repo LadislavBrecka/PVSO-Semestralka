@@ -2,10 +2,12 @@ import cv2
 import imutils
 
 from circle_detect import circle_detect
+from color import Colors
 from rect_detect import rect_detect
+from shape import Shapes
 
 
-def detect(img, color, shape):
+def detect(img, color: Colors, shape: Shapes):
 
     # Convert to the HSV color space
     blur = cv2.medianBlur(img, 5)
@@ -15,7 +17,7 @@ def detect(img, color, shape):
     # Hue 100-130 is close to blue, which we are detecting
     # These values can be changed (the lower ones) to better fit environment
     # TODO: manipulate with this to get better matching
-    mask = cv2.inRange(hsv, (color.h_range[0], 100, 100), (color.h_range[1], 255, 255))
+    mask = cv2.inRange(hsv, (color.value.h_range[0], 100, 100), (color.value.h_range[1], 255, 255))
 
     # Dilates with two iterations (makes it more visible)
     thresh = cv2.dilate(mask, None, iterations=2)
@@ -37,15 +39,15 @@ def detect(img, color, shape):
         # Compute size
         size = (h + w) // 2 // 2
 
-        if shape == 'CIRCLE':
+        if shape == Shapes.CIRCLE:
             chosen = circle_detect(img, x, y)
             if chosen is not None:
-                cv2.circle(img, (x+size, y+size), size, color.bgr, 3)
+                cv2.circle(img, (x+size, y+size), size, color.value.bgr, 3)
 
-        if shape == 'RECT':
+        if shape == Shapes.RECTANGLE:
             chosen = rect_detect(img, x, y)
             if chosen is not None:
                 ROI = img[y:y + h, x:x + w]
-                cv2.rectangle(img, (x, y), (x + w, y + h), color.bgr, 2)
+                cv2.rectangle(img, (x, y), (x + w, y + h), color.value.bgr, 2)
 
     return img
