@@ -2,24 +2,13 @@ import cv2
 import time
 import sys
 
-from color import Colors
+from color import Colors, CmdColors
 from detector import detect
 from shape import Shapes
 
 # image setting
 width = 640
 height = 480
-
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
 
 
 def main():
@@ -44,7 +33,7 @@ def main():
         if COLOR.value is None or SHAPE.value is None:
             sys.exit("Wrong shape or color entered")
 
-        print(bcolors.OKGREEN + "Selected shape is {} with color {}".format(SHAPE.name, COLOR.name) + bcolors.ENDC)
+        print(CmdColors.OK_GREEN + "Selected shape is {} with color {}".format(SHAPE.name, COLOR.name) + CmdColors.END)
 
     # setting up camera and capturing object
     imcap = cv2.VideoCapture(0)
