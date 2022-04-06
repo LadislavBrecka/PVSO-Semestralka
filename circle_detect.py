@@ -10,7 +10,7 @@ def circle_detect(img, x, y):
     v = np.median(blurred)
     sigma = 0.3
     upper = int(min(255, (1.0 + sigma) * v))
-    circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, 1, minDist=100, param1=upper, param2=20, minRadius=0)
+    circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, 1, minDist=100, param1=upper, param2=20, minRadius=50)
     chosen = None
     if circles is not None:
         circles = np.uint16(np.around(circles))
