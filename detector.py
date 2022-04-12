@@ -8,7 +8,7 @@ from rect_detect import rect_detect
 from shape import Shapes
 
 
-def detect(img, color: Colors, shape: Shapes):
+def detect(img, color: Colors, shape: Shapes, additional_img_selector):
 
     # Convert to the HSV color space
     blur = cv2.medianBlur(img, 5)
@@ -27,6 +27,8 @@ def detect(img, color: Colors, shape: Shapes):
     contours = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contours = imutils.grab_contours(contours)
 
+    additional_img = thresh
+
     # Loops over all objects found
     for contour in contours:
 
@@ -42,8 +44,13 @@ def detect(img, color: Colors, shape: Shapes):
                     cv2.circle(img, (circle[0], circle[1]), circle[2], color.value.mark_bgr, 3)
 
         if shape == Shapes.RECTANGLE:
-            chosen = rect_detect(thresh)
-            if chosen is not None:
-                cv2.rectangle(img, (chosen[0], chosen[1]), (chosen[0] + chosen[2], chosen[1] + chosen[3]), color.value.mark_bgr, 2)
+            if additional_img_selector == 2:
+                lines, additional_img = rect_detect(thresh)
+            else:
+                lines, _ = rect_detect(thresh)
+            if lines is not None:
+                for x in range(0, len(lines)):
+                    for x1, y1, x2, y2 in lines[x]:
+                        cv2.line(img, (x1, y1), (x2, y2), color.value.mark_bgr, 2)
 
-    return img, thresh
+    return img, additional_img

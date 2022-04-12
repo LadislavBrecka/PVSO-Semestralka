@@ -30,7 +30,7 @@ class Application:
         self.current_image = None  # current image from the camera
 
         self.root = tk.Tk()  # initialize root window
-        self.root.title("PyImageSearch PhotoBooth")  # set window title
+        self.root.title("Python colored shape detector")  # set window title
         # self.destructor function gets fired when the window is closed
         self.root.protocol('WM_DELETE_WINDOW', self.destructor)
 
@@ -60,6 +60,15 @@ class Application:
         drop = tk.OptionMenu(self.root, self.clicked_shape, *shape_options)
         drop.pack(pady=(0, 10))
 
+        label = tk.Label(self.root, text="RIGHT IMAGE SEL", font=("", 10))
+        label.pack(padx=10, pady=(15, 5))
+        self.selected_img = tk.IntVar()
+        self.selected_img.set(1)
+        R1 = tk.Radiobutton(self.root, text="   HSV Image", variable=self.selected_img, value=1)
+        R1.pack(anchor=tk.W)
+        R2 = tk.Radiobutton(self.root, text="Shape processed img\n(if present, otherwise HSV)",variable=self.selected_img, value=2)
+        R2.pack(anchor=tk.W)
+
         # start a self.video_loop that constantly pools the video sensor
         # for the most recently read frame
         self.video_loop()
@@ -69,8 +78,9 @@ class Application:
         ok, frame = self.vs.read()  # read frame from video stream
         if ok:
             color_img, thresh = detect(frame,
-                               color_switch.get(self.clicked_color.get(), Colors.INVALID),
-                               shape_switch.get(self.clicked_shape.get(), Shapes.INVALID))
+                                       color_switch.get(self.clicked_color.get(), Colors.INVALID),
+                                       shape_switch.get(self.clicked_shape.get(), Shapes.INVALID),
+                                       self.selected_img.get())
 
             cv2image = cv2.cvtColor(color_img, cv2.COLOR_BGR2RGBA)  # convert colors from BGR to RGBA
             self.current_image = Image.fromarray(cv2image)  # convert image for PIL

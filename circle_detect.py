@@ -1,7 +1,4 @@
 import cv2
-import numpy as np
-
-from distance import dist
 
 
 def circle_detect(threshold_img):

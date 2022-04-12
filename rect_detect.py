@@ -1,39 +1,45 @@
 import cv2
 import numpy as np
-from distance import dist
+
+
+'''
+:argument HSV masked binary image
+
+It's more or less noisy, so these operation are made before HoughLines:
+
+    1. Erosion/dilation - for noise removal, with large kernel, because we receive image with white pixels on whole 
+                          colored area, so we will cut edges with erosion (which are noisy) and then will add them 
+                          back with dilation 
+    
+    2. Canny edge - for edge detection, lower and upper threshold are computed automatically
+    
+Then we are detecting lines with HoughLinesP function.    
+
+:return found lines, edged image      
+'''
 
 
 def rect_detect(threshold_img):
+
+    kernel_ero = np.ones((12, 12), np.uint8)
+    kernel_dil = np.ones((12, 12), np.uint8)
+
+    img_erosion = cv2.erode(threshold_img, kernel_ero, iterations=3)
+    img_dilation = cv2.dilate(img_erosion, kernel_dil, iterations=3)
+
     SIGMA = 0.33
 
     # compute the median of the single channel pixel intensities
-    v = np.median(threshold_img)
+    v = np.median(img_dilation)
     # apply automatic Canny edge detection using the computed median
     lower = int(max(0, (1.0 - SIGMA) * v))
     upper = int(min(255, (1.0 + SIGMA) * v))
-    edged = cv2.Canny(threshold_img, lower, upper)
+    edged = cv2.Canny(img_dilation, lower, upper)
 
-    # Taking a matrix of size 5 as the kernel
-    kernel_ero = np.ones((1, 1), np.uint8)
-    kernel_dil = np.ones((9, 9), np.uint8)
+    minLineLength = 30
+    maxLineGap = 10
+    lines = cv2.HoughLinesP(edged, 1, np.pi / 180, 15, minLineLength=minLineLength, maxLineGap=maxLineGap)
 
-    img_erosion = cv2.erode(edged, kernel_ero, iterations=1)
-    img_dilation = cv2.dilate(img_erosion, kernel_dil, iterations=1)
-
-    cnts = cv2.findContours(img_dilation, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-    cnts = cnts[0] if len(cnts) == 2 else cnts[1]
-
-    min_area = 1500
-    max_area = 40000
-    chosen = None
-    for c in cnts:
-        area = cv2.contourArea(c)
-        if min_area < area < max_area:
-            x_r, y_r, w, h = cv2.boundingRect(c)
-            rect = (x_r, y_r, w, h)
-            chosen = rect
-
-    # return the edged image
-    return chosen
+    return lines, edged
 
 
