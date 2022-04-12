@@ -1,3 +1,5 @@
+from tkinter import LEFT, RIGHT
+
 from PIL import Image, ImageTk
 import tkinter as tk
 import argparse
@@ -33,7 +35,13 @@ class Application:
         self.root.protocol('WM_DELETE_WINDOW', self.destructor)
 
         self.panel = tk.Label(self.root)  # initialize image panel
-        self.panel.pack(padx=10, pady=10)
+        self.panel.pack(side=LEFT, padx=10, pady=10)
+
+        self.second_panel = tk.Label(self.root)  # initialize image panel
+        self.second_panel.pack(side=RIGHT, padx=10, pady=10)
+
+        label = tk.Label(self.root, text="DETECTION MENU", font=("", 10))
+        label.pack(padx=10, pady=10)
 
         # Create Dropdown menu
         label = tk.Label(self.root, text="Select color!", font=("", 10))
@@ -42,7 +50,7 @@ class Application:
         self.clicked_color = tk.StringVar()
         self.clicked_color.set("RED")
         drop = tk.OptionMenu(self.root, self.clicked_color, *color_options)
-        drop.pack()
+        drop.pack(pady=(0, 10))
 
         label = tk.Label(self.root, text="Select shape!", font=("", 10))
         label.pack()
@@ -50,7 +58,7 @@ class Application:
         self.clicked_shape = tk.StringVar()
         self.clicked_shape.set("RECTANGLE")
         drop = tk.OptionMenu(self.root, self.clicked_shape, *shape_options)
-        drop.pack()
+        drop.pack(pady=(0, 10))
 
         # start a self.video_loop that constantly pools the video sensor
         # for the most recently read frame
@@ -60,7 +68,7 @@ class Application:
         """ Get frame from the video stream and show it in Tkinter """
         ok, frame = self.vs.read()  # read frame from video stream
         if ok:
-            color_img = detect(frame,
+            color_img, thresh = detect(frame,
                                color_switch.get(self.clicked_color.get(), Colors.INVALID),
                                shape_switch.get(self.clicked_shape.get(), Shapes.INVALID))
 
@@ -69,6 +77,13 @@ class Application:
             imgtk = ImageTk.PhotoImage(image=self.current_image)  # convert image for tkinter
             self.panel.imgtk = imgtk  # anchor imgtk so it does not be deleted by garbage-collector
             self.panel.config(image=imgtk)  # show the image
+
+            cv2image = cv2.cvtColor(thresh, cv2.COLOR_BGR2RGBA)  # convert colors from BGR to RGBA
+            self.current_image = Image.fromarray(cv2image)  # convert image for PIL
+            imgtk = ImageTk.PhotoImage(image=self.current_image)  # convert image for tkinter
+            self.second_panel.imgtk = imgtk  # anchor imgtk so it does not be deleted by garbage-collector
+            self.second_panel.config(image=imgtk)  # show the image
+
         self.root.after(30, self.video_loop)  # call the same function after 30 milliseconds
 
     def destructor(self):

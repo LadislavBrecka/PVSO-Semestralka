@@ -3,24 +3,15 @@ import numpy as np
 from distance import dist
 
 
-def rect_detect(img, x, y):
+def rect_detect(threshold_img):
     SIGMA = 0.33
 
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    blur = cv2.medianBlur(gray, 9)
-    sharpen_kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
-    sharpen = cv2.filter2D(blur, -1, sharpen_kernel)
-
-    thresh = cv2.threshold(sharpen, 200, 255, cv2.THRESH_BINARY_INV)[1]
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
-    close = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=2)
-
     # compute the median of the single channel pixel intensities
-    v = np.median(close)
+    v = np.median(threshold_img)
     # apply automatic Canny edge detection using the computed median
     lower = int(max(0, (1.0 - SIGMA) * v))
     upper = int(min(255, (1.0 + SIGMA) * v))
-    edged = cv2.Canny(close, lower, upper)
+    edged = cv2.Canny(threshold_img, lower, upper)
 
     # Taking a matrix of size 5 as the kernel
     kernel_ero = np.ones((1, 1), np.uint8)
@@ -33,16 +24,14 @@ def rect_detect(img, x, y):
     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
 
     min_area = 1500
-    max_area = 10000
+    max_area = 40000
     chosen = None
     for c in cnts:
         area = cv2.contourArea(c)
         if min_area < area < max_area:
             x_r, y_r, w, h = cv2.boundingRect(c)
-            rect = (x_r, y_r)
-            distance = dist(rect, (x, y))
-            if distance < 1000:
-                chosen = rect
+            rect = (x_r, y_r, w, h)
+            chosen = rect
 
     # return the edged image
     return chosen

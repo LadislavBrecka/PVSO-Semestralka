@@ -1,5 +1,6 @@
 import cv2
 import imutils
+import numpy as np
 
 from circle_detect import circle_detect
 from color import Colors
@@ -17,10 +18,10 @@ def detect(img, color: Colors, shape: Shapes):
     # Hue 100-130 is close to blue, which we are detecting
     # These values can be changed (the lower ones) to better fit environment
     # TODO: manipulate with this to get better matching
-    mask = cv2.inRange(hsv, (color.value.h_range[0], 100, 100), (color.value.h_range[1], 255, 255))
+    thresh = cv2.inRange(hsv, (color.value.h_range[0], 100, 100), (color.value.h_range[1], 255, 255))
 
-    # Dilates with two iterations (makes it more visible)
-    thresh = cv2.dilate(mask, None, iterations=2)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
+    thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=3)
 
     # Finds contours and converts it to a list
     contours = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -30,24 +31,19 @@ def detect(img, color: Colors, shape: Shapes):
     for contour in contours:
 
         # Skip if contour is small (can be adjusted)
-        if cv2.contourArea(contour) < 750:
+        if cv2.contourArea(contour) < 350:
             continue
 
-        # Get the box boundaries
-        (x, y, w, h) = cv2.boundingRect(contour)
-
-        # Compute size
-        size = (h + w) // 2 // 2
-
         if shape == Shapes.CIRCLE:
-            chosen = circle_detect(img, x, y)
-            if chosen is not None:
-                cv2.circle(img, (x+size, y+size), size, color.value.bgr, 3)
+            circles = circle_detect(thresh)
+            if circles is not None:
+                circles = np.uint16(np.around(circles))
+                for circle in circles[0, :]:
+                    cv2.circle(img, (circle[0], circle[1]), circle[2], color.value.mark_bgr, 3)
 
         if shape == Shapes.RECTANGLE:
-            chosen = rect_detect(img, x, y)
+            chosen = rect_detect(thresh)
             if chosen is not None:
-                ROI = img[y:y + h, x:x + w]
-                cv2.rectangle(img, (x, y), (x + w, y + h), color.value.bgr, 2)
+                cv2.rectangle(img, (chosen[0], chosen[1]), (chosen[0] + chosen[2], chosen[1] + chosen[3]), color.value.mark_bgr, 2)
 
-    return img
+    return img, thresh
