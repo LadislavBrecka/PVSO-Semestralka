@@ -2,10 +2,7 @@ from tkinter import LEFT, RIGHT
 
 from PIL import Image, ImageTk
 import tkinter as tk
-import argparse
-import datetime
 import cv2
-import os
 
 from color import Colors
 from detector import detect
