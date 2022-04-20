@@ -37,7 +37,10 @@ def detect(img, color: Colors, shape: Shapes, additional_img_selector):
             continue
 
         if shape == Shapes.CIRCLE:
-            circles = circle_detect(thresh)
+            if additional_img_selector == 2:
+                circles, additional_img = circle_detect(thresh)
+            else:
+                circles, _ = circle_detect(thresh)
             if circles is not None:
                 circles = np.uint16(np.around(circles))
                 for circle in circles[0, :]:
@@ -45,12 +48,18 @@ def detect(img, color: Colors, shape: Shapes, additional_img_selector):
 
         if shape == Shapes.RECTANGLE:
             if additional_img_selector == 2:
-                lines, additional_img = rect_detect(thresh)
+                intersections,  additional_img = rect_detect(thresh)
             else:
-                lines, _ = rect_detect(thresh)
-            if lines is not None:
-                for x in range(0, len(lines)):
-                    for x1, y1, x2, y2 in lines[x]:
-                        cv2.line(img, (x1, y1), (x2, y2), color.value.mark_bgr, 2)
+                intersections, _ = rect_detect(thresh)
+            if intersections is not None:
+                # Draw intersection points in magenta
+                for point in intersections:
+                    try:
+                        pt = (point[0][0], point[0][1])
+                        length = 5
+                        cv2.line(img, (pt[0], pt[1] - length), (pt[0], pt[1] + length), color.value.mark_bgr, 1)
+                        cv2.line(img, (pt[0] - length, pt[1]), (pt[0] + length, pt[1]), color.value.mark_bgr, 1)
+                    except cv2.error:
+                        pass
 
     return img, additional_img

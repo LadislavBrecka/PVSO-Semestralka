@@ -11,7 +11,7 @@ class Color:
 
 
 class Colors(enum.Enum):
-    RED = Color((0, 0, 255), (150, 180), (0, 255, 0))
+    RED = Color((0, 0, 255), (170, 180), (0, 255, 0))
     GREEN = Color((0, 255, 0), (50, 80), (0, 0, 255))
     YELLOW = Color((0, 255, 255), (20, 40), (0, 0, 255))
     INVALID = None
