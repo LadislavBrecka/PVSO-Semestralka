@@ -61,5 +61,7 @@ def detect(img, color: Colors, shape: Shapes, additional_img_selector):
                         cv2.line(img, (pt[0] - length, pt[1]), (pt[0] + length, pt[1]), color.value.mark_bgr, 1)
                     except cv2.error:
                         pass
+                    except TypeError:
+                        pass
 
     return img, additional_img
