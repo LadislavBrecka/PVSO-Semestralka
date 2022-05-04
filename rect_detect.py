@@ -1,3 +1,4 @@
+import math
 import sys
 from collections import defaultdict
 
@@ -47,7 +48,46 @@ def rect_detect(threshold_img):
         # Find the intersections of each vertical line with each horizontal line
         intersections = segmented_intersections(segmented)
 
+        radius = 50
+        if intersections is not None:
+            # fil
+            for point in intersections:
+                try:
+                    point_number = 0
+                    for point1 in intersections:
+                        try:
+                            if math.dist([point[0][0], point[0][1]], [point1[0][0], point1[0][1]]) < radius:
+                                point1[0][0] = point[0][0]
+                                point1[0][1] = point[0][1]
+                                point_number += 1
+                        except cv2.error:
+                            pass
+                        except TypeError:
+                            pass
+                    if point_number == 0:
+                        intersections.remove(point)
+                except cv2.error:
+                    pass
+                except TypeError:
+                    pass
+
+            intersections = without_duplicates(intersections)
+
     return intersections, edged
+
+
+def without_duplicates(objs):
+    if len(objs) > 1:
+        objs = sorted(objs)
+        last = objs[0]
+        result = [last]
+        for current in objs[1:]:
+            if current != last:
+                result.append(current)
+            last = current
+        return result
+    else:
+        return objs
 
 
 def segment_by_angle_kmeans(lines, k=2, **kwargs):

@@ -7,13 +7,36 @@ from typing import Tuple
 class Color:
     bgr: Tuple[int, int, int]
     h_range: Tuple[int, int]
+    s_range: Tuple[int, int]
+    v_range: Tuple[int, int]
     mark_bgr: Tuple[int, int, int]
 
 
 class Colors(enum.Enum):
-    RED = Color((0, 0, 255), (170, 180), (0, 255, 0))
-    GREEN = Color((0, 255, 0), (50, 80), (0, 0, 255))
-    YELLOW = Color((0, 255, 255), (20, 40), (0, 0, 255))
+    RED = Color((0, 0, 255),
+                (150, 180),
+                (150, 255),
+                (150, 255),
+                (0, 255, 0)
+                )
+    GREEN = Color((0, 255, 0),
+                  (50, 80),
+                  (100, 255),
+                  (100, 255),
+                  (0, 0, 255)
+                  )
+    YELLOW = Color((0, 255, 255),
+                   (20, 40),
+                   (100, 255),
+                   (100, 255),
+                   (0, 0, 255)
+                   )
+    BLUE = Color((255, 0, 0),
+                 (100, 130),
+                 (100, 255),
+                 (100, 255),
+                 (0, 0, 255)
+                 )
     INVALID = None
 
 

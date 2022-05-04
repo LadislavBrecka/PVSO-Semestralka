@@ -13,11 +13,10 @@ def detect(img, color: Colors, shape: Shapes, additional_img_selector):
     blur = cv2.medianBlur(img, 5)
     hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
 
-    # Create a mask based on medium to high Saturation and Value
-    # Hue 100-130 is close to blue, which we are detecting
+    # Create a mask based on specified values in color.py
     # These values can be changed (the lower ones) to better fit environment
-    # TODO: manipulate with this to get better matching
-    thresh = cv2.inRange(hsv, (color.value.h_range[0], 100, 100), (color.value.h_range[1], 255, 255))
+    thresh = cv2.inRange(hsv, (color.value.h_range[0], color.value.s_range[0], color.value.v_range[0]),
+                         (color.value.h_range[1], color.value.s_range[1], color.value.v_range[1]))
 
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
     thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=3)
@@ -50,68 +49,55 @@ def detect(img, color: Colors, shape: Shapes, additional_img_selector):
                 intersections, additional_img = rect_detect(thresh)
             else:
                 intersections, _ = rect_detect(thresh)
-            radius = 50
-            if intersections is not None:
-                # Draw intersection points in magenta
-                for point in intersections:
-                    try:
-                        pt = (point[0][0], point[0][1])
-                        length = 5
-                        # cv2.line(img, (pt[0], pt[1] - length), (pt[0], pt[1] + length), color.value.mark_bgr, 1)
-                        # cv2.line(img, (pt[0] - length, pt[1]), (pt[0] + length, pt[1]), color.value.mark_bgr, 1)
-                        point_number = 0
-                        for point1 in intersections:
-                            try:
-                                if math.dist([point[0][0], point[0][1]], [point1[0][0], point1[0][1]]) < radius:
-                                    point1[0][0] = point[0][0]
-                                    point1[0][1] = point[0][1]
-                                    point_number += 1
+                if intersections is not None:
+                    if len(intersections) == 4:
+                        distance0 = math.dist([intersections[0][0][0], intersections[0][0][1]],
+                                              [intersections[1][0][0], intersections[1][0][1]])
+                        distance1 = math.dist([intersections[0][0][0], intersections[0][0][1]],
+                                              [intersections[2][0][0], intersections[2][0][1]])
+                        distance2 = math.dist([intersections[0][0][0], intersections[0][0][1]],
+                                              [intersections[3][0][0], intersections[3][0][1]])
+                        distance3 = math.dist([intersections[1][0][0], intersections[1][0][1]],
+                                              [intersections[2][0][0], intersections[2][0][1]])
+                        distance4 = math.dist([intersections[2][0][0], intersections[2][0][1]],
+                                              [intersections[3][0][0], intersections[3][0][1]])
+                        distance5 = math.dist([intersections[1][0][0], intersections[1][0][1]],
+                                              [intersections[3][0][0], intersections[3][0][1]])
 
-                            except cv2.error:
-                                pass
-                            except TypeError:
-                                pass
-                        if point_number == 0:
-                            intersections.remove(point)
-                    except cv2.error:
-                        pass
-                    except TypeError:
-                        pass
+                        dists = [distance0, distance1, distance2, distance3, distance4, distance5]
 
-                intersections = without_duplicates(intersections)
-                for point in intersections:
-                    try:
-                        pt = (point[0][0], point[0][1])
-                        length = 5
-                        cv2.line(img, (pt[0], pt[1] - length), (pt[0], pt[1] + length), color.value.mark_bgr, 1)
-                        cv2.line(img, (pt[0] - length, pt[1]), (pt[0] + length, pt[1]), color.value.mark_bgr, 1)
-                    except cv2.error:
-                        pass
-                    except TypeError:
-                        pass
+                        max1, max2, d_prev = None, None, 0
+                        for i in range(0, 6):
+                            if dists[i] > d_prev:
+                                d_prev = dists[i]
+                                max1 = i
+                        d_prev = 0
+                        for i in range(0, 6):
+                            if dists[i] > d_prev and max1 != i:
+                                d_prev = dists[i]
+                                max2 = i
 
-                if len(intersections) == 4:
-                    cv2.line(img, (intersections[0][0][0], intersections[0][0][1]), (intersections[1][0][0], intersections[1][0][1]), color.value.mark_bgr, 1)
-                    cv2.line(img, (intersections[1][0][0], intersections[1][0][1]), (intersections[2][0][0], intersections[2][0][1]), color.value.mark_bgr, 1)
-                    cv2.line(img, (intersections[2][0][0], intersections[2][0][1]), (intersections[3][0][0], intersections[3][0][1]), color.value.mark_bgr, 1)
-                    cv2.line(img, (intersections[3][0][0], intersections[3][0][1]), (intersections[0][0][0], intersections[0][0][1]), color.value.mark_bgr, 1)
+                        if max1 != 0 and max2 != 0:
+                            cv2.line(img, (intersections[0][0][0], intersections[0][0][1]),
+                                     (intersections[1][0][0], intersections[1][0][1]), color.value.mark_bgr, 4)
+                        if max1 != 1 and max2 != 1:
+                            cv2.line(img, (intersections[0][0][0], intersections[0][0][1]),
+                                     (intersections[2][0][0], intersections[2][0][1]), color.value.mark_bgr, 4)
+                        if max1 != 2 and max2 != 2:
+                            cv2.line(img, (intersections[0][0][0], intersections[0][0][1]),
+                                     (intersections[3][0][0], intersections[3][0][1]), color.value.mark_bgr, 4)
+                        if max1 != 3 and max2 != 3:
+                            cv2.line(img, (intersections[2][0][0], intersections[2][0][1]),
+                                     (intersections[1][0][0], intersections[1][0][1]), color.value.mark_bgr, 4)
+                        if max1 != 4 and max2 != 4:
+                            cv2.line(img, (intersections[2][0][0], intersections[2][0][1]),
+                                     (intersections[3][0][0], intersections[3][0][1]), color.value.mark_bgr, 4)
 
-
-
-
+                        if max1 != 5 and max2 != 5:
+                            cv2.line(img, (intersections[3][0][0], intersections[3][0][1]),
+                                     (intersections[1][0][0], intersections[1][0][1]), color.value.mark_bgr, 4)
 
     return img, additional_img
 
 
-def without_duplicates(objs):
-    if len(objs) > 1:
-        objs = sorted(objs)
-        last = objs[0]
-        result = [last]
-        for current in objs[1:]:
-            if current != last:
-                result.append(current)
-            last = current
-        return result
-    else:
-        return objs
+
